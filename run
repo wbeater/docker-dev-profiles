@@ -1,0 +1,115 @@
+#!/bin/bash
+CMD=$@
+read -ra ARGS <<<"$CMD"
+IFS=" "
+#ARGS=("$@")
+DIR="/var/www/app"
+
+if [ -f .env ]; then
+    set -o allexport
+    source .env
+    set +o allexport
+fi
+
+if [ "$1" == "wp" ]; then
+    command="docker-compose exec fpm sh -c 'cd ${DIR} && wp ${ARGS[@]:1}'"
+    echo $command
+    eval $command
+    # docker-compose exec fpm sh -c "cd ${DIR} && wp ${ARGS[@]:1}"
+    exit
+elif [ "$1" == "up" ] || [ "$1" == "start" ]; then
+    arguments=""
+    profile=""
+
+    while [ "$#" -gt 0 ]; do
+        case "$2" in
+            --profile=*)
+                profile="${2#*=}"
+                shift
+                ;;
+            *)
+                arguments="${arguments} $2"
+                shift
+                ;;
+        esac
+    done
+
+    echo "docker-compose up ${arguments}"
+    profile=$(echo "PROFILE_$profile" | tr '[:lower:]' '[:upper:]')
+
+    if [ -n "$profile" ]; then
+        export COMPOSE_PROFILES="${!profile}"
+    fi
+
+    echo $COMPOSE_PROFILES > .profile
+    docker-compose up ${arguments}
+    exit
+elif [ "$1" == "down" ] || [ "$1" == "stop" ]; then
+    profile=$(cat .profile)
+    
+    if [ -n "$profile" ]; then
+        export COMPOSE_PROFILES="${profile}"
+    fi
+
+    rm -f .profile
+    docker-compose stop
+    exit
+elif [ "$1" == "restart" ] || [ "$1" == "reload" ]; then
+    docker-compose restart ${ARGS[@]:1}
+    exit
+elif [ "$1" == "build" ]; then
+    #echo "docker-compose build ${ARGS[@]:1}"
+    #docker-compose build ${ARGS[@]:1}
+    echo "docker-compose up -d --force-recreate --no-deps --no-start --build ${ARGS[@]:1}"
+    docker-compose up -d --force-recreate --no-deps --no-start --build ${ARGS[@]:1}
+    exit
+elif [ "$1" == "bash" ]; then
+    echo "docker-compose exec fpm sh"
+    docker-compose exec fpm sh
+    exit
+elif [ "$1" == "certbot" ]; then
+    if [ "$2" == "local" ]; then
+        ./certbot/init-letsencrypt.sh local $APP_HOST $APP_EMAIL
+    elif [ "$2" == "staging" ]; then
+        ./certbot/init-letsencrypt.sh staging $APP_HOST $APP_EMAIL
+    else
+        ./certbot/init-letsencrypt.sh production $APP_HOST $APP_EMAIL
+    fi
+    exit
+elif [ "$1" == "composer" ]; then
+    SVR='fpm'
+    command="docker-compose exec fpm sh -c 'cd ${DIR} && composer ${ARGS[@]:1}'"
+    echo $command
+    eval $command
+    exit
+elif [ "$1" == "php" ]; then
+    SVR='fpm'
+    command="docker-compose exec fpm sh -c \"cd ${DIR} && php ${ARGS[@]:1}\""
+    echo $command
+    eval $command
+    exit
+elif [ "$1" == "fpm" ]; then
+    SVR='fpm'
+elif [ "$1" == "db" ] || [ "$1" == 'mysql' ]; then
+    SVR='db'
+else
+    SVR="$1"
+fi
+
+#echo "docker-compose exec fpm php ${DIR}artisan ${ARGS[@]:2}"
+#exit
+
+case $2 in
+ch | check)
+    echo "docker-compose exec fpm sh -c \"cd ${DIR} && vendor/bin/phpcbf\""
+    docker-compose exec fpm sh -c "cd ${DIR} && vendor/bin/phpcbf"
+    ;;
+ch2 | check2)
+    echo "docker-compose exec fpm sh -c \"cd ${DIR} && vendor/bin/phpcs -np\""
+    docker-compose exec fpm sh -c "cd ${DIR} && vendor/bin/phpcs -np"
+    ;;
+*)
+    echo "docker-compose exec $SVR ${ARGS[@]:1}"
+    docker-compose exec $SVR ${ARGS[@]:1}
+    ;;
+esac

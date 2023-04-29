@@ -1,0 +1,240 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:1.24-alpine
+    profiles: [ 'nginx' ]
+    restart: always
+    working_dir: /var/www/app
+    ports:
+      - '${APP_PORT:-80}:80'
+      - '${APP_PORT_SSL:-443}:443'
+      - '${ADMINER_PORT:-88}:88'
+    environment:
+      APP_HOST: '${APP_HOST:-wp.docker.com}'
+      ADMINER_DISABLED: '${ADMINER_DISABLED:-true}'
+      WORDPRESS_DB_HOST: '${DB_HOST:-db}'
+      WORDPRESS_DB_USER: '${DB_USERNAME:-root}'
+      WORDPRESS_DB_PASSWORD: '${DB_PASSWORD:-123456}'
+      WORDPRESS_DB_NAME: '${DB_DATABASE:-wordpress}'
+    init: true
+    # entrypoint: "/bin/sh /docker-entrypoint.sh nginx"
+    # command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+    volumes:
+      - ./adminer:/var/www/adminer
+      - ${APP_PATH:-../}:/var/www/app
+      - ./nginx/config/nginx.conf:/etc/nginx/nginx.conf
+      # - ./nginx/data/conf.d:/etc/nginx/conf.d/
+      - ./nginx/config/templates:/etc/nginx/templates
+      - ./nginx/config/docker-entrypoint.d:/docker-entrypoint.d:exec
+      - ./certbot/config/conf:/etc/letsencrypt
+      - ./certbot/config/www:/var/www/certbot
+      - ./nginx/logs:/var/log/nginx
+    depends_on:
+      - fpm
+    networks:
+      - wbeater
+  certbot:
+    image: certbot/certbot
+    profiles: [ 'certbot' ]
+    init: true
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    # command: certonly --webroot --webroot-path=/var/www/html --email youremail@domain.com --agree-tos --no-eff-email -d domain.com -d www.domain.com
+    volumes:
+      - ./certbot/data/conf:/etc/letsencrypt
+      - ./certbot/data/www:/var/www/certbot:rw
+      - ./certbot/logs:/var/log/letsencrypt
+    networks:
+      - wbeater
+
+  fpm:
+    build: ./fpm
+    profiles: [ 'fpm' ]
+    working_dir: /var/www/app
+    restart: always
+    user: "${USERID}:${GROUPID}"
+    depends_on:
+      - db
+      # - redis
+    volumes:
+      - ./adminer:/var/www/adminer
+      - ${APP_PATH:-../}:/var/www/app
+      - ./fpm/config/www.conf:/usr/local/etc/php-fpm.d/www.conf
+      - ./fpm/config/php-fpm.conf:/usr/local/etc/php-fpm.conf
+      - ./fpm/config/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
+      - ./fpm/config/custom.ini:/usr/local/etc/php/conf.d/custom.ini
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - wbeater
+
+  node:
+    image: "node:alpine"
+    profiles: [ 'node' ]
+    # user: "node"
+    working_dir: /home/node/app
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      NODE_PORT: ${NODE_PORT:-8080}
+      MONGO_CONN: ${MONGO_CONN}
+    volumes:
+      - ${NODE_PATH:-../}:/home/node/app
+      # - ../nodeapp:/home/node/app
+      - ./node/logs/npm:/home/node/.npm/_logs/
+    ports:
+      - '${NODE_PORT:-8080}:${NODE_PORT:-8080}'
+    command: "npm start"
+    networks:
+      - wbeater
+
+  db:
+    image: jbergstroem/mariadb-alpine:latest
+    profiles: [ 'db' ]
+    # command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - '${FORWARD_DB_PORT:-33060}:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+      MYSQL_ROOT_HOST: '127.0.0.1'
+      MYSQL_DATABASE: '${DB_DATABASE}'
+      MYSQL_USER: '${DB_USERNAME}'
+      MYSQL_PASSWORD: '${DB_PASSWORD}'
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    volumes:
+      - './mysql/data:/var/lib/mysql'
+      - ./mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - wbeater
+    # healthcheck:
+    #     test:
+    #         - CMD
+    #         - mysqladmin
+    #         - ping
+    #         - '-p${DB_PASSWORD}'
+    #     retries: 3
+    #     timeout: 5s
+
+  mongodb:
+    image: mongo:6.0.5-jammy
+    profiles: [ 'mongodb' ]
+    restart: always
+    ports:
+      - '${MONGO_PORT:-27017}:27017'
+    environment:
+      - MONGO_INITDB_DATABASE=${MONGO_DB:-mydb}
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ADMIN_USER:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ADMIN_PASS:-pass}
+      - MONGO_USER=${MONGO_USER:-user}
+      - MONGO_PASS=${MONGO_PASS:-pass}
+    volumes:
+      - ./mongodb/data:/data/db
+      - ./mongodb/dump:/data/dump
+      - ./mongodb/init/create_user.js:/docker-entrypoint-initdb.d/create_user.js:ro
+      # - ./mongodb/init:/docker-entrypoint-initdb.d
+    networks:
+      - wbeater
+
+  mailpit:
+    image: 'axllent/mailpit:latest'
+    profiles: [ 'mailpit' ]
+    ports:
+      - '${FORWARD_MAILPIT_PORT:-1025}:1025'
+      - '${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025'
+    networks:
+      - wbeater
+  meilisearch:
+    image: 'getmeili/meilisearch:latest'
+    profiles: [ 'meilisearch' ]
+    environment:
+      MEILI_MASTER_KEY: '1234567890123456'
+      MEILI_NO_ANALYTICS: true
+    ports:
+      - '${FORWARD_MEILISEARCH_PORT:-7700}:7700'
+    volumes:
+      - './meilisearch/data:/meili_data'
+    networks:
+      - wbeater
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - '--no-verbose'
+        - '--spider'
+        - 'http://localhost:7700/health'
+      retries: 3
+      timeout: 5s
+  minio:
+    image: 'minio/minio:latest'
+    profiles: [ 'minio' ]
+    ports:
+      - '${FORWARD_MINIO_PORT:-9000}:9000'
+      - '${FORWARD_MINIO_CONSOLE_PORT:-8900}:8900'
+    environment:
+      MINIO_ROOT_USER: wbeater
+      MINIO_ROOT_PASSWORD: password
+    volumes:
+      - './minio/data:/data/minio'
+    networks:
+      - wbeater
+    command: 'minio server /data/minio --console-address ":8900"'
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - '-f'
+        - 'http://localhost:9000/minio/health/live'
+      retries: 3
+      timeout: 5s
+  soketi:
+    image: 'quay.io/soketi/soketi:latest-16-alpine'
+    profiles: [ 'soketi' ]
+    environment:
+      SOKETI_DEBUG: '${SOKETI_DEBUG:-1}'
+      SOKETI_METRICS_SERVER_PORT: '9601'
+      SOKETI_DEFAULT_APP_ID: '${PUSHER_APP_ID}'
+      SOKETI_DEFAULT_APP_KEY: '${PUSHER_APP_KEY}'
+      SOKETI_DEFAULT_APP_SECRET: '${PUSHER_APP_SECRET}'
+    ports:
+      - '${PUSHER_PORT:-6001}:6001'
+      - '${PUSHER_METRICS_PORT:-9601}:9601'
+    networks:
+      - wbeater
+  redis:
+    image: 'redis:alpine'
+    profiles: [ 'redis' ]
+    ports:
+      - '${FORWARD_REDIS_PORT:-6379}:6379'
+    volumes:
+      - './redis/data:/data'
+    networks:
+      - wbeater
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      retries: 3
+      timeout: 5s
+  redisgui:
+    image: patrikx3/p3x-redis-ui:latest
+    profiles: [ 'redisgui' ]
+    ports:
+        - 7843:7843
+    volumes:
+        # here you can set your own /home/user/p3x-redis-ui-settings folder
+        - ./redis/settings:/settings
+    networks:
+      - wbeater
+networks:
+  wbeater:
+    driver: bridge
+  # volumes:
+  # wbeater-db:
+  #     driver: local
+  # wbeater-meilisearch:
+  #     driver: local
+  # wbeater-minio:
+  #     driver: local
+  # wbeater-redis:
+  #     driver: local
+
