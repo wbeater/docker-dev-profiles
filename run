@@ -16,17 +16,25 @@ if [ -n "$profile" ]; then
     export COMPOSE_PROFILES="${profile}"
 fi
 
-if [ "$1" == "wp" ]; then
+if [ "$1" == "artisan" ]; then
+    command="docker-compose exec fpm sh -c 'cd ${DIR} && php artisan ${ARGS[@]:1}'"
+    echo $command
+    eval $command
+    exit
+elif [ "$1" == "wp" ]; then
     command="docker-compose exec fpm sh -c 'cd ${DIR} && wp ${ARGS[@]:1}'"
     echo $command
     eval $command
-    # docker-compose exec fpm sh -c "cd ${DIR} && wp ${ARGS[@]:1}"
     exit
 elif [ "$1" == "up" ] || [ "$1" == "start" ]; then
     arguments=""
     profile_name=""
     app_cert="${APP_CERT:-local}"
     app_host="${APP_HOST:-wp.docker.com}"
+
+    if ! grep -q $app_host /etc/hosts; then
+        sudo sh -c "echo '127.0.0.1 $app_host' >> /etc/hosts"
+    fi
 
     if [ ! -f "./certbot/config/conf/live/${app_host}" ]; then
         echo "File not found. ./certbot/config/conf/live/${app_host}"
@@ -63,8 +71,6 @@ elif [ "$1" == "restart" ] || [ "$1" == "reload" ]; then
     docker-compose restart ${ARGS[@]:1}
     exit
 elif [ "$1" == "build" ]; then
-    #echo "docker-compose build ${ARGS[@]:1}"
-    #docker-compose build ${ARGS[@]:1}
     echo "docker-compose up -d --force-recreate --no-deps --no-start --build ${ARGS[@]:1}"
     docker-compose up -d --force-recreate --no-deps --no-start --build ${ARGS[@]:1}
     exit
@@ -101,9 +107,6 @@ else
     SVR="$1"
 fi
 
-#echo "docker-compose exec fpm php ${DIR}artisan ${ARGS[@]:2}"
-#exit
-
 case $2 in
 ch | check)
     echo "docker-compose exec fpm sh -c \"cd ${DIR} && vendor/bin/phpcbf\""
@@ -112,6 +115,10 @@ ch | check)
 ch2 | check2)
     echo "docker-compose exec fpm sh -c \"cd ${DIR} && vendor/bin/phpcs -np\""
     docker-compose exec fpm sh -c "cd ${DIR} && vendor/bin/phpcs -np"
+    ;;
+ar | artisan)
+    echo "docker-compose exec fpm sh -c \"cd ${DIR} && php artisan ${ARGS[@]:2}\""
+    docker-compose exec fpm sh -c "cd ${DIR} && php artisan ${ARGS[@]:2}"
     ;;
 *)
     echo "docker-compose exec $SVR ${ARGS[@]:1}"
