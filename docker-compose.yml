@@ -32,6 +32,7 @@ services:
       - ./nginx/logs:/var/log/nginx
     depends_on:
       - fpm
+      - certbot
     networks:
       - wbeater
   certbot:
@@ -48,7 +49,8 @@ services:
       - wbeater
 
   fpm:
-    build: ./fpm
+    # build: ./fpm
+    image: wbeater/8.2.8-php-fpm-alpine
     profiles: [ 'fpm' ]
     working_dir: /var/www/app
     restart: always

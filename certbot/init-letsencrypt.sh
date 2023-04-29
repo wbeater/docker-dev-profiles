@@ -21,13 +21,13 @@ else
 fi
 
 if [ "$3" == "" ]; then
-  email="wbeater@gmail.com" # Adding a valid address is strongly recommended
+  email="admin@example.com" # Adding a valid address is strongly recommended
 else
   email=$3
 fi
 
 rsa_key_size=4096
-data_path="$PWD/certbot/data"
+data_path="$PWD/certbot/config"
 
 if [ -d "$data_path" ]; then
   read -p "Existing data found for $domains. Continue and replace existing certificate? (y/N) " decision

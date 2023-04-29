@@ -11,6 +11,11 @@ if [ -f .env ]; then
     set +o allexport
 fi
 
+profile=$(cat .profile)  
+if [ -n "$profile" ]; then
+    export COMPOSE_PROFILES="${profile}"
+fi
+
 if [ "$1" == "wp" ]; then
     command="docker-compose exec fpm sh -c 'cd ${DIR} && wp ${ARGS[@]:1}'"
     echo $command
@@ -19,12 +24,12 @@ if [ "$1" == "wp" ]; then
     exit
 elif [ "$1" == "up" ] || [ "$1" == "start" ]; then
     arguments=""
-    profile=""
+    profile_name=""
 
     while [ "$#" -gt 0 ]; do
         case "$2" in
             --profile=*)
-                profile="${2#*=}"
+                profile_name="${2#*=}"
                 shift
                 ;;
             *)
@@ -34,24 +39,16 @@ elif [ "$1" == "up" ] || [ "$1" == "start" ]; then
         esac
     done
 
-    echo "docker-compose up ${arguments}"
-    profile=$(echo "PROFILE_$profile" | tr '[:lower:]' '[:upper:]')
-
-    if [ -n "$profile" ]; then
-        export COMPOSE_PROFILES="${!profile}"
+    if [ -n "$profile_name" ]; then
+        profile_name=$(echo "PROFILE_$profile_name" | tr '[:lower:]' '[:upper:]')
+        export COMPOSE_PROFILES="${!profile_name}"
     fi
 
     echo $COMPOSE_PROFILES > .profile
+    echo "docker-compose up ${arguments}"
     docker-compose up ${arguments}
     exit
 elif [ "$1" == "down" ] || [ "$1" == "stop" ]; then
-    profile=$(cat .profile)
-    
-    if [ -n "$profile" ]; then
-        export COMPOSE_PROFILES="${profile}"
-    fi
-
-    rm -f .profile
     docker-compose stop
     exit
 elif [ "$1" == "restart" ] || [ "$1" == "reload" ]; then
