@@ -29,7 +29,7 @@ fi
 rsa_key_size=4096
 data_path="$PWD/certbot/config"
 
-if [ -d "$data_path" ]; then
+if [ -d "$data_path/$domains" ]; then
   read -p "Existing data found for $domains. Continue and replace existing certificate? (y/N) " decision
   if [ "$decision" != "Y" ] && [ "$decision" != "y" ]; then
     exit

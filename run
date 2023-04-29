@@ -25,6 +25,14 @@ if [ "$1" == "wp" ]; then
 elif [ "$1" == "up" ] || [ "$1" == "start" ]; then
     arguments=""
     profile_name=""
+    app_cert="${APP_CERT:-local}"
+    app_host="${APP_HOST:-wp.docker.com}"
+
+    if [ ! -f "./certbot/config/conf/live/${app_host}" ]; then
+        echo "File not found. ./certbot/config/conf/live/${app_host}"
+        echo "./certbot/init-letsencrypt.sh ${app_cert} $app_host $APP_EMAIL"
+        ./certbot/init-letsencrypt.sh ${app_cert} $app_host $APP_EMAIL
+    fi
 
     while [ "$#" -gt 0 ]; do
         case "$2" in
