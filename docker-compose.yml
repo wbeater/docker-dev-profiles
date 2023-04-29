@@ -41,8 +41,8 @@ services:
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     # command: certonly --webroot --webroot-path=/var/www/html --email youremail@domain.com --agree-tos --no-eff-email -d domain.com -d www.domain.com
     volumes:
-      - ./certbot/data/conf:/etc/letsencrypt
-      - ./certbot/data/www:/var/www/certbot:rw
+      - ./certbot/config/conf:/etc/letsencrypt
+      - ./certbot/config/www:/var/www/certbot:rw
       - ./certbot/logs:/var/log/letsencrypt
     networks:
       - wbeater
