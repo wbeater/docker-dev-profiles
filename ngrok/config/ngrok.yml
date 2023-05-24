@@ -1,0 +1,13 @@
+version: 2
+authtoken: ${NGROK_AUTHTOKEN}
+web_addr: 0.0.0.0:8081
+update: false
+log: stdout
+
+tunnels:
+  nginx:
+    addr: nginx:80
+    proto: http
+  # node:
+  #   addr: node:8080
+  #   proto: http

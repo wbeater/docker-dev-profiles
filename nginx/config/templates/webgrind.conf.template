@@ -1,20 +1,21 @@
 server {
-  server_name aff.local; 
-  listen 88;
+  server_name ${APP_HOST}; 
+  listen 99;
 
-  #if ( ${NGINX_ADMINER_DISABLED} ) {
-  #  return 444;
-  #}
+  set $webgrind_disabled "${WEBGRIND_DISABLED}";
+  if ( $webgrind_disabled = 'true' ) {
+    return 444;
+  }
 
   index index.php index.html index.htm;
-  root /var/www/adminer;
+  root /var/www/webgrind;
 
-  access_log /var/log/nginx/access.log;
-  error_log /var/log/nginx/error.log;
+  access_log /var/log/nginx/access_webgrind.log;
+  error_log /var/log/nginx/error_webgrind.log;
 
   location / {
     # try to serve file directly, fallback to index.php
-    try_files $uri /index.php?$args;
+    try_files $uri $uri/ /index.php?$args;
   }
 
   location ~ /.docker {

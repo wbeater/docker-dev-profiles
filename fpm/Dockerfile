@@ -109,6 +109,11 @@ ENV PHP_POST_MAX_SIZE=512M
 # ENV PHP_INI_DIR /usr/local/etc/php
 RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" 
 
+RUN apk --update add python3
+RUN apk add --update --no-cache \
+           graphviz \
+           ttf-freefont
+
 # Changing Workdir
 WORKDIR /app
 

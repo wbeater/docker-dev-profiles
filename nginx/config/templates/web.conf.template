@@ -1,6 +1,6 @@
 server {
-  server_name ${APP_HOST}; 
-  listen 80;
+  server_name _; 
+  listen ${APP_PORT} default_server;
 
   index index.php index.html index.htm;
   root /var/www/app;
@@ -30,13 +30,14 @@ server {
     fastcgi_pass fpm:9000; # address of a fastCGI server
     fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
     fastcgi_param PATH_INFO $fastcgi_path_info;
+    fastcgi_param APP_HOST ${APP_HOST};
     include fastcgi_params;
   }
 }
 
 server {
-  listen 443 ssl;
-  server_name ${APP_HOST};
+  listen ${APP_PORT_SSL} ssl;
+  server_name _;
   
   ssl_certificate /etc/letsencrypt/live/${APP_HOST}/fullchain.pem;
   ssl_certificate_key /etc/letsencrypt/live/${APP_HOST}/privkey.pem;
@@ -72,6 +73,7 @@ server {
     fastcgi_pass fpm:9000; # address of a fastCGI server
     fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
     fastcgi_param PATH_INFO $fastcgi_path_info;
+    fastcgi_param APP_HOST ${APP_HOST};
     include fastcgi_params;
   }
 }

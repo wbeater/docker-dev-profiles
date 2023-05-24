@@ -1,32 +1,95 @@
 #!/bin/bash
+BSH=$0
+BSHDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CMD=$@
 read -ra ARGS <<<"$CMD"
 IFS=" "
 #ARGS=("$@")
 DIR="/var/www/app"
 
-if [ -f .env ]; then
+if [ -f "$BSHDIR/.env" ]; then
     set -o allexport
-    source .env
+    source "$BSHDIR/.env"
     set +o allexport
 fi
 
-profile=$(cat .profile)  
-if [ -n "$profile" ]; then
-    export COMPOSE_PROFILES="${profile}"
+if [ -f  "$BSHDIR/.profile" ]; then
+    profile=$(cat "$BSHDIR/.profile")  
+    if [ -n "$profile" ]; then
+        export COMPOSE_PROFILES="${profile}"
+    fi
 fi
 
-if [ "$1" == "artisan" ]; then
-    command="docker-compose exec fpm sh -c 'cd ${DIR} && php artisan ${ARGS[@]:1}'"
+if [ "$1" == "info" ]; then
+    IFS=',' read -ra PROFILE <<< "$COMPOSE_PROFILES"
+    has_nginx=false
+    has_minio=false
+    has_redis=false
+    has_mailpit=false
+    
+    for profile in "${PROFILE[@]}"; do
+        if [[ $profile == "nginx" ]]; then
+            has_nginx=true
+        elif [[ $profile == "minio" ]]; then
+            has_minio=true
+        elif [[ $profile == "redis" ]]; then
+            has_redis=true
+        elif [[ $profile == "mailpit" ]]; then
+            has_mailpit=true
+        fi
+    done
+
+    if [[ $has_nginx == true ]]; then
+        PROFILE+=("adminer")
+        PROFILE+=("webgrind")
+    fi
+    if [[ $has_minio == true ]]; then
+        PROFILE+=("minio_console")
+    fi
+    if [[ $has_redis == true ]]; then
+        PROFILE+=("redisgui")
+    fi
+    if [[ $has_mailpit == true ]]; then
+        PROFILE+=("mailpit_dashboard")
+    fi
+   
+    sorted_profile=($(printf "%s," "${PROFILE[@]}" | sort))
+    IFS=',' read -ra SORTED_PROFILE <<< "$sorted_profile"
+
+    for profile in "${SORTED_PROFILE[@]}"; do
+        upper=$(echo "$profile" | tr '[:lower:]' '[:upper:]')
+        var_name="FORWARD_${upper}_PORT"
+
+        if [[ ! -z $var_name ]] && [ ! -z "${!var_name}" ]; then
+            echo "- $upper : http://${APP_HOST}:${!var_name}"
+        fi
+    done
+
+    exit
+elif [ "$1" == "artisan" ]; then
+    command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR} && php artisan ${ARGS[@]:1}'"
     echo $command
     eval $command
     exit
-elif [ "$1" == "wp" ]; then
-    command="docker-compose exec fpm sh -c 'cd ${DIR} && wp ${ARGS[@]:1}'"
+elif [ "$1" == "wp" ] || [ "$1" == "acorn" ] || [ "$1" == "wp-theme" ]; then
+    if [ "$1" == "acorn" ]; then
+        command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR} && wp acorn ${ARGS[@]:1}'"
+    elif [ "$1" == "wp" ]; then
+        command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR} && wp ${ARGS[@]:1}'"
+    else
+        command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR}/wp-content/themes/wbeater && ${ARGS[@]:1}'"
+    fi
+
     echo $command
     eval $command
     exit
-elif [ "$1" == "up" ] || [ "$1" == "start" ]; then
+elif [ "$1" == "composer" ]; then
+    command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR}/wp-content/themes/wbeater && composer ${ARGS[@]:1}'"
+    echo $command
+    eval $command
+    exit
+elif [ "$1" == "up" ] || [ "$1" == "start" ] || [ "$1" == "force-start" ]; then
+    BSHNAME="$1"
     arguments=""
     profile_name=""
     app_cert="${APP_CERT:-local}"
@@ -59,20 +122,32 @@ elif [ "$1" == "up" ] || [ "$1" == "start" ]; then
         profile_name=$(echo "PROFILE_$profile_name" | tr '[:lower:]' '[:upper:]')
         export COMPOSE_PROFILES="${!profile_name}"
     fi
+    
+    echo $COMPOSE_PROFILES > "$BSHDIR/.profile"
 
-    echo $COMPOSE_PROFILES > .profile
-    echo "docker-compose up ${arguments}"
-    docker-compose up ${arguments}
+    if [ $BSHNAME == "force-start" ]; then
+        echo "$BSH stop all"
+        $BSH stop all
+    fi
+
+    echo "docker-compose -f $BSHDIR/docker-compose.yml up ${arguments}"
+    docker-compose -f $BSHDIR/docker-compose.yml up ${arguments}
     exit
 elif [ "$1" == "down" ] || [ "$1" == "stop" ]; then
-    docker-compose stop
+    if [ "$2" == "all" ]; then
+        all=$(echo "$(docker ps -aq)" | tr '\n' ' ')
+        # echo "docker container stop $all"
+        docker container stop $all
+    else
+        docker-compose stop
+    fi
     exit
 elif [ "$1" == "restart" ] || [ "$1" == "reload" ]; then
     docker-compose restart ${ARGS[@]:1}
     exit
 elif [ "$1" == "build" ]; then
     echo "docker-compose up -d --force-recreate --no-deps --no-start --build ${ARGS[@]:1}"
-    docker-compose up -d --force-recreate --no-deps --no-start --build ${ARGS[@]:1}
+    docker-compose -f $BSHDIR/docker-compose.yml up -d --force-recreate --no-deps --no-start --build ${ARGS[@]:1}
     exit
 elif [ "$1" == "bash" ]; then
     echo "docker-compose exec fpm sh"
@@ -89,17 +164,23 @@ elif [ "$1" == "certbot" ]; then
     exit
 elif [ "$1" == "composer" ]; then
     SVR='fpm'
-    command="docker-compose exec fpm sh -c 'cd ${DIR} && composer ${ARGS[@]:1}'"
+    command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR} && composer ${ARGS[@]:1}'"
     echo $command
     eval $command
     exit
 elif [ "$1" == "php" ]; then
     SVR='fpm'
-    command="docker-compose exec fpm sh -c \"cd ${DIR} && php ${ARGS[@]:1}\""
+    command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c \"cd ${DIR} && php ${ARGS[@]:1}\""
     echo $command
     eval $command
     exit
-elif [ "$1" == "fpm" ]; then
+elif [ "$1" == "ar" ] || [ "$1" == "artisan" ]; then    
+    SVR='fpm'
+    command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c \"cd ${DIR} && php artisan ${ARGS[@]:1}\""
+    echo $command
+    eval $command
+    exit
+elif [ "$1" == "fpm" ] || [ "$1" == "cmd" ]; then
     SVR='fpm'
 elif [ "$1" == "db" ] || [ "$1" == 'mysql' ]; then
     SVR='db'
@@ -110,18 +191,18 @@ fi
 case $2 in
 ch | check)
     echo "docker-compose exec fpm sh -c \"cd ${DIR} && vendor/bin/phpcbf\""
-    docker-compose exec fpm sh -c "cd ${DIR} && vendor/bin/phpcbf"
+    docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c "cd ${DIR} && vendor/bin/phpcbf"
     ;;
 ch2 | check2)
     echo "docker-compose exec fpm sh -c \"cd ${DIR} && vendor/bin/phpcs -np\""
-    docker-compose exec fpm sh -c "cd ${DIR} && vendor/bin/phpcs -np"
+    docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c "cd ${DIR} && vendor/bin/phpcs -np"
     ;;
 ar | artisan)
     echo "docker-compose exec fpm sh -c \"cd ${DIR} && php artisan ${ARGS[@]:2}\""
-    docker-compose exec fpm sh -c "cd ${DIR} && php artisan ${ARGS[@]:2}"
+    docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c "cd ${DIR} && php artisan ${ARGS[@]:2}"
     ;;
 *)
     echo "docker-compose exec $SVR ${ARGS[@]:1}"
-    docker-compose exec $SVR ${ARGS[@]:1}
+    docker-compose -f $BSHDIR/docker-compose.yml exec $SVR ${ARGS[@]:1}
     ;;
 esac

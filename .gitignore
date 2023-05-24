@@ -1,16 +1,21 @@
 !**/data/**/.gitkeep
-./certbot/logs/**
+.profile
+./certbot/logs/
+./certbot/config/conf/**
 ./certbot/data/conf/**
 ./certbot/data/www/**
 
-./fpm/mongodb/data/**
-./fpm/mongodb/dump/**
+./fpm/log/**
+
+./mongodb/data/**
+./mongodb/dump/**
 
 ./mysql/data/**
 ./mysql/dump/**
 ./mysql/init/db.dump.*
 
 ./nginx/logs/**
+
 ./meilisearch/data/**
 ./minio/data/**
 

@@ -13,3 +13,7 @@ db.createUser({
 });
 
 print("End Adding the User Roles.");
+
+// db.getSiblingDB("admin").auth('admin', 'passs');
+// show collections;
+// mongorestore --host localhost --port 27017 --username user --password pass --db mydb ./aff_products
