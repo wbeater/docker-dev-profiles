@@ -47,6 +47,7 @@ if (!empty($urls['nginx'])) {
     $_SERVER['REMOTE_ADDR'] = $siteUrl;
     $_SERVER['SERVER_ADDR'] = $publicDomain;
     $_SERVER['HTTPS'] = $scheme == 'https';
+    $_SERVER['SERVER_NAME'] = $_SERVER['APP_HOST'];
 }
 
 defined('WP_HOME') or define('WP_HOME', $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['SERVER_NAME']);
