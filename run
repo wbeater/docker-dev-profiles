@@ -71,9 +71,11 @@ elif [ "$1" == "artisan" ]; then
     echo $command
     eval $command
     exit
-elif [ "$1" == "wp" ] || [ "$1" == "acorn" ] || [ "$1" == "wp-theme" ]; then
-    if [ "$1" == "acorn" ]; then
+elif [ "$1" == "acorn" ] || [ "$1" == "shell" ] || [ "$1" == "shell-theme" ] || [ "$1" == "wp" ] || [ "$1" == "wp-theme" ]; then
+    if [ "$1" == "acorn" ] || [ "$1" == "shell" ]; then
         command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR} && wp acorn ${ARGS[@]:1}'"
+    elif [ "$1" == "acorn-theme" ] || [ "$1" == "shell-theme" ]; then
+        command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR}/wp-content/themes/wbeater && wp acorn ${ARGS[@]:1}'"
     elif [ "$1" == "wp" ]; then
         command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR} && wp ${ARGS[@]:1}'"
     else
