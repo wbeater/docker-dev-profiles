@@ -71,15 +71,19 @@ elif [ "$1" == "artisan" ]; then
     echo $command
     eval $command
     exit
-elif [ "$1" == "acorn" ] || [ "$1" == "shell" ] || [ "$1" == "shell-theme" ] || [ "$1" == "wp" ] || [ "$1" == "wp-theme" ]; then
+elif [ "$1" == "acorn" ] || [ "$1" == "shell" ] || [ "$1" == "wp-theme" ] || [ "$1" == "shell-theme" ] || [ "$1" == "vendor" ] || [ "$1" == "wp" ]; then
+    args=$(echo "${ARGS[@]:1}" | sed 's/\\/\\\\/g')
+
     if [ "$1" == "acorn" ] || [ "$1" == "shell" ]; then
-        command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR} && wp acorn ${ARGS[@]:1}'"
-    elif [ "$1" == "acorn-theme" ] || [ "$1" == "shell-theme" ]; then
-        command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR}/wp-content/themes/wbeater && wp acorn ${ARGS[@]:1}'"
+        command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR} && wp acorn $args'"
+    elif [ "$1" == "wp-theme" ] || [ "$1" == "shell-theme" ]; then
+        command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR}/wp-content/themes/wbeater && $args'"
+    elif [ "$1" == "vendor" ]; then
+        command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR}/wp-content/themes/wbeater && ./vendor/bin/$args'"
     elif [ "$1" == "wp" ]; then
-        command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR} && wp ${ARGS[@]:1}'"
+        command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR} && wp $args'"
     else
-        command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR}/wp-content/themes/wbeater && ${ARGS[@]:1}'"
+        command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR}/wp-content/themes/wbeater && $args'"
     fi
 
     echo $command
@@ -87,6 +91,11 @@ elif [ "$1" == "acorn" ] || [ "$1" == "shell" ] || [ "$1" == "shell-theme" ] || 
     exit
 elif [ "$1" == "composer" ]; then
     command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR}/wp-content/themes/wbeater && composer ${ARGS[@]:1}'"
+    echo $command
+    eval $command
+    exit
+elif [ "$1" == "yarn" ]; then
+    command="docker-compose -f $BSHDIR/docker-compose.yml exec node sh -c 'yarn ${ARGS[@]:1}'"
     echo $command
     eval $command
     exit
