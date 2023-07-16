@@ -21,6 +21,16 @@ services:
       WORDPRESS_DB_USER: '${DB_USERNAME:-root}'
       WORDPRESS_DB_PASSWORD: '${DB_PASSWORD:-123456}'
       WORDPRESS_DB_NAME: '${DB_DATABASE:-wordpress}'
+      # #s3 & ses
+      # AWS_ACCESS_KEY_ID: '${AWS_ACCESS_KEY_ID}'
+      # AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      # AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
+
+      # #s3
+      # AWS_BUCKET: ${AWS_BUCKET}
+      # AWS_URL: ${AWS_URL}
+      # AWS_ENDPOINT: ${AWS_ENDPOINT}
+      # AWS_USE_PATH_STYLE_ENDPOINT: ${AWS_USE_PATH_STYLE_ENDPOINT}
     init: true
     # entrypoint: "/bin/sh /docker-entrypoint.sh nginx"
     # command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
@@ -76,6 +86,8 @@ services:
       - ./fpm/config/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
       - ./fpm/config/custom.ini:/usr/local/etc/php/conf.d/custom.ini
       - ./fpm/config/opcache.ini:/usr/local/etc/php/conf.d/docker-php-ext-opcache.ini
+    ports:
+      - '${FORWARD_DUMP_PORT:-9912}:9912'
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:

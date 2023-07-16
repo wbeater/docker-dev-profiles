@@ -10,7 +10,7 @@ server {
   index index.php index.html index.htm;
   root /var/www/webgrind;
 
-  access_log /var/log/nginx/access_webgrind.log;
+  #access_log /var/log/nginx/access_webgrind.log;
   error_log /var/log/nginx/error_webgrind.log;
 
   location / {
