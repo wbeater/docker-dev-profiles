@@ -6,6 +6,7 @@ read -ra ARGS <<<"$CMD"
 IFS=" "
 #ARGS=("$@")
 DIR="/var/www/app"
+COMPOSER_DIR="${DIR}/wp-content/themes/wbeater"
 
 if [ -f "$BSHDIR/.env" ]; then
     set -o allexport
@@ -77,20 +78,20 @@ elif [ "$1" == "acorn" ] || [ "$1" == "shell" ] || [ "$1" == "wp-theme" ] || [ "
     if [ "$1" == "acorn" ] || [ "$1" == "shell" ]; then
         command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR} && wp acorn $args'"
     elif [ "$1" == "wp-theme" ] || [ "$1" == "shell-theme" ]; then
-        command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR}/wp-content/themes/wbeater && $args'"
+        command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${COMPOSER_DIR} && $args'"
     elif [ "$1" == "vendor" ]; then
-        command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR}/wp-content/themes/wbeater && ./vendor/bin/$args'"
+        command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${COMPOSER_DIR} && ./vendor/bin/$args'"
     elif [ "$1" == "wp" ]; then
         command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR} && wp $args'"
     else
-        command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR}/wp-content/themes/wbeater && $args'"
+        command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${COMPOSER_DIR} && $args'"
     fi
 
     echo $command
     eval $command
     exit
 elif [ "$1" == "composer" ]; then
-    command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${DIR}/wp-content/themes/wbeater && composer ${ARGS[@]:1}'"
+    command="docker-compose -f $BSHDIR/docker-compose.yml exec fpm sh -c 'cd ${COMPOSER_DIR} && composer ${ARGS[@]:1}'"
     echo $command
     eval $command
     exit
