@@ -12,6 +12,7 @@ services:
       - '${FORWARD_ADMINER_PORT:-88}:88'
       - '${FORWARD_WEBGRIND_PORT:-99}:99'
     environment:
+      PUBLIC_PATH: '${PUBLIC_PATH:-}'
       APP_HOST: '${APP_HOST:-wp.docker.com}'
       APP_PORT: 80
       APP_PORT_SSL: 443
@@ -62,7 +63,7 @@ services:
     volumes:
       - ./certbot/config/conf:/etc/letsencrypt
       - ./certbot/config/www:/var/www/certbot:rw
-      - ./certbot/logs:/var/log/letsencrypt
+      # - ./certbot/logs:/var/log/letsencrypt
     networks:
       - wbeater
 
@@ -102,7 +103,7 @@ services:
   #   networks:
   #     - wbeater
   node:
-    image: "node:alpine"
+    image: "node:lts-alpine3.18"
     profiles: [ 'node' ]
     # user: "node"
     working_dir: /home/node/app
@@ -113,10 +114,10 @@ services:
     volumes:
       - ${NODE_PATH:-../}:/home/node/app
       # - ../nodeapp:/home/node/app
-      - ./node/logs/npm:/home/node/.npm/_logs/
+      # - ./node/logs/npm:/home/node/.npm/_logs/
     ports:
       - '${FORWARD_NODE_PORT:-8080}:${NODE_PORT:-8080}'
-    command: "npm start"
+    command: "tail -f /dev/null"
     networks:
       - wbeater
 
@@ -134,7 +135,8 @@ services:
       MYSQL_PASSWORD: '${DB_PASSWORD}'
       MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
     volumes:
-      - './mysql/data:/var/lib/mysql'
+      # - './mysql/data:/var/lib/mysql'
+      - 'wbeater-db:/var/lib/mysql'
       - ./mysql/init:/docker-entrypoint-initdb.d
     networks:
       - wbeater
@@ -162,7 +164,8 @@ services:
       - MONGO_USER=${MONGO_USER:-user}
       - MONGO_PASS=${MONGO_PASS:-pass}
     volumes:
-      - ./mongodb/data:/data/db
+      # - ./mongodb/data:/data/db
+      - 'wbeater-mongodb:/data/db'
       - ./mongodb/dump:/data/dump
       - ./mongodb/init/create_user.js:/docker-entrypoint-initdb.d/create_user.js:ro
       # - ./mongodb/init:/docker-entrypoint-initdb.d
@@ -186,7 +189,8 @@ services:
     ports:
       - '${FORWARD_MEILISEARCH_PORT:-7700}:7700'
     volumes:
-      - './meilisearch/data:/meili_data'
+      # - './meilisearch/data:/meili_data'
+      - 'wbeater-meilisearch:/meili_data'
     networks:
       - wbeater
     healthcheck:
@@ -208,7 +212,8 @@ services:
       MINIO_ROOT_USER: '${MINIO_ROOT_USER:-wbeater}'
       MINIO_ROOT_PASSWORD: '${MINIO_ROOT_PASSWORD:-password}'
     volumes:
-      - './minio/data:/data/minio'
+      # - './minio/data:/data/minio'
+      - 'wbeater-minio:/data/minio'
     networks:
       - wbeater
     command: 'minio server /data/minio --console-address ":8900"'
@@ -240,7 +245,8 @@ services:
     ports:
       - '${FORWARD_REDIS_PORT:-6379}:6379'
     volumes:
-      - './redis/data:/data'
+      # - './redis/data:/data'
+      - 'wbeater-redis:/data'
     networks:
       - wbeater
     healthcheck:
@@ -282,13 +288,15 @@ services:
 networks:
   wbeater:
     driver: bridge
-  # volumes:
-  # wbeater-db:
-  #     driver: local
-  # wbeater-meilisearch:
-  #     driver: local
-  # wbeater-minio:
-  #     driver: local
-  # wbeater-redis:
-  #     driver: local
+volumes:
+  wbeater-db:
+      driver: local
+  wbeater-mongodb:
+      driver: local
+  wbeater-meilisearch:
+      driver: local
+  wbeater-minio:
+      driver: local
+  wbeater-redis:
+      driver: local
 

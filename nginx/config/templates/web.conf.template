@@ -3,7 +3,7 @@ server {
   listen ${APP_PORT} default_server;
 
   index index.php index.html index.htm;
-  root /var/www/app;
+  root /var/www/app/${PUBLIC_PATH};
 
   access_log /var/log/nginx/access.log;
   error_log /var/log/nginx/error.log;
