@@ -1,9 +1,7 @@
 !**/data/**/.gitkeep
 .profile
-./certbot/logs/
-./certbot/config/conf/**
-./certbot/data/conf/**
-./certbot/data/www/**
+./certbot/logs/**
+./certbot/config/**
 
 ./fpm/log/**
 

@@ -95,8 +95,8 @@ elif [ "$1" == "composer" ]; then
     echo $command
     eval $command
     exit
-elif [ "$1" == "yarn" ]; then
-    command="docker-compose -f $BSHDIR/docker-compose.yml exec node sh -c 'yarn ${ARGS[@]:1}'"
+elif [ "$1" == "yarn" ] || [ "$1" == "npm" ]; then
+    command="docker-compose -f $BSHDIR/docker-compose.yml exec node sh -c '$1 ${ARGS[@]:1}'"
     echo $command
     eval $command
     exit
